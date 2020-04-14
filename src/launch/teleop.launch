@@ -1,0 +1,4 @@
+<launch>
+<node pkg="RRT-Mobile-Manipulator" type="teleop_twist_keyboard.py" name="fetch_teleop" output="screen">
+</node>
+</launch>

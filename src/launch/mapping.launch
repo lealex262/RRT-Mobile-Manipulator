@@ -1,0 +1,9 @@
+<launch>
+<include file="$(find fetch_navigation)/launch/build_map.launch">
+</include>
+<node pkg="RRT-Mobile-Manipulator" type="teleop_twist_keyboard.py" name="fetch_teleop" output="screen">
+</node>
+<node pkg="rviz" type="rviz" name="$(anon rviz)"
+args="-d $(find RRT-Mobile-Manipulator)/src/config/mapping.rviz">
+</node>
+</launch>
