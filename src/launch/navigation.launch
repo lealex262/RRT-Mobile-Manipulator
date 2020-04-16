@@ -2,6 +2,8 @@
 <include file="$(find fetch_navigation)/launch/fetch_nav.launch">
 <arg name="map_file" default="$(find RRT-Mobile-Manipulator)/src/maps/playground.yaml"/>
 </include>
+<node pkg="pose_publisher" type="pose_publisher" name="pose_publisher"> 
+</node>
 <node pkg="rviz" type="rviz" name="$(anon rviz)"
   args="-d $(find RRT-Mobile-Manipulator)/src/config/navigation.rviz">
   </node>

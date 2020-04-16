@@ -1,31 +1,11 @@
 #!/usr/bin/env python
 import rospy
 from nav_msgs.msg import OccupancyGrid
+from geometry_msgs.msg import PoseStamped
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-def cmap_callback(msg):
-    cmap_data = np.array(msg.data)
-    width = msg.info.width
-    height = msg.info.height
-    cmap_data = cmap_data.reshape((height, width))
-
-    cmap_origin = np.array([msg.info.origin.position.x, msg.info.origin.position.y])
-
-    draw_cmap(cmap_data)
-
-# def position_callback(msg):
-#     # Position
-#     x = msg.pose.pose.position.x
-#     y = msg.pose.pose.position.y
-
-#     # Orientation
-#     orientation_q = msg.pose.pose.orientation
-#     orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
-#     (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
-#     theta = yaw
 
 """
 /move_base/global_costmap/costmap [nav_msgs/OccupancyGrid] 1 publisher
@@ -55,37 +35,61 @@ info:
       w: 1.0
 data: [[]]
 """
+def cmap_callback(msg):
+    cmap_data = np.array(msg.data)
+    width_pixel = msg.info.width
+    height_pixel = msg.info.height
+    cmap_data = cmap_data.reshape((height_pixel, width_pixel))
+
+    cmap_origin = np.array([msg.info.origin.position.x, msg.info.origin.position.y])
+    width_meter = height_pixel * 0.05
+    height_meter = height_pixel * 0.05    
+
+    draw_cmap(cmap_data)
+
+
+"""
+/pose [geometry_msgs/PoseStamped] 1 publisher
+
+header: 
+  seq: 190
+  stamp: 
+    secs: 1120
+    nsecs: 244000000
+  frame_id: "/map"
+pose: 
+  position: 
+    x: 5.05099202886
+    y: 4.95224533782
+    z: 0.0
+  orientation: 
+    x: 0.0
+    y: 0.0
+    z: -0.036077132877
+    w: 0.999349008347
+"""
+def position_callback(msg):
+    # Position
+    x = msg.pose.position.x
+    y = msg.pose.position.y
+
+    # Orientation
+    orientation_q = msg.pose.pose.orientation
+    orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+    # (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+    # theta = yaw
+
+
 def costmap_listener():
     rospy.init_node('costmap_listener')
     rospy.Subscriber("/move_base/global_costmap/costmap", OccupancyGrid, cmap_callback, queue_size=1)
     rospy.spin()
 
-# """
-# /odom [nav_msgs/Odometry] 1 publisher
 
-# header: 
-#   seq: 52446
-#   stamp: 
-#     secs: 524
-#     nsecs: 611000000
-#   frame_id: "odom"
-# child_frame_id: "base_link"
-# pose: 
-#   pose: 
-#     position: 
-#       x: -0.0016886485426
-#       y: 2.45101691152e-05
-#       z: 0.0
-#     orientation: 
-#       x: 0.0
-#       y: 0.0
-#       z: -0.0181039317554
-#       w: 0.999836110398
-#   covariance: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-# """
-# def robot_position_listener():
-#     rospy.init_node
-#     rospy.Subscriber('odom',Odometry, callback)
+def robot_position_listener():
+    rospy.init_node
+    rospy.Subscriber('/pose', PoseStamped, callback)
+    rospy.spin()
 
 
 def draw_cmap(map):
