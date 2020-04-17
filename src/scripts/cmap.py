@@ -170,8 +170,8 @@ class Map:
                 ax.plot(xl, yl, "-b")
 
                 # Draw Arrow head
-                dx = math.cos(np.deg2rad(self.robot_orientation))
-                dy = math.sin(np.deg2rad(self.robot_orientation))
+                dx = math.cos(self.robot_orientation)
+                dy = math.sin(self.robot_orientation)
                 x -= dx * self.robot_size/2
                 y -= dy * self.robot_size/2
                 ax.arrow(x, y, dx, dy, color='b', head_width=self.robot_size, head_length=self.robot_size, overhang=0.4)
