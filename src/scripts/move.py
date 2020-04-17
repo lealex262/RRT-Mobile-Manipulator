@@ -5,6 +5,8 @@ import actionlib
 from actionlib_msgs.msg import GoalStatus
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
+from tf.transformations import quaternion_from_euler
+
 
 # Setup node
 rospy.init_node("send_goal")
@@ -59,7 +61,18 @@ def move_along_path(path):
     return True
 
 
+"""
+Converts x,y,theta node to x,y,z,quaternion
+"""
+def node_2_goal(position, theta):
+    quaternion = quaternion_from_euler(0, 0, theta)
+    goal = ((position[0], position[1], 0), (quaternion[0], quaternion[1], quaternion[2], quaternion[3]))
+    return goal
+
+
 if __name__ == "__main__":
     # Test
-    path = [((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)), ((5.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)),((5.0, 5.0, 0.0), (0.0, 0.0, 0.0, 1.0))]
+    path = [(0.0, 0.0, 0.0), (5.0, 0.0, 0.0), (5.0, 5.0, 3.14)]
+    for ii in range(len(path)):
+        path[ii] = node_2_goal(path[ii][0:2], path[ii][2])
     move_along_path(path)
