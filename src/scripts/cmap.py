@@ -5,6 +5,7 @@ from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion
 
 import numpy as np
+from scipy import ndimage
 import matplotlib.pyplot as plt
 import time
 import math
@@ -18,9 +19,11 @@ class Map:
         self.robot_orientation = None
         self.map_position = None
         self.map_size = None
+        self.map_pixel_size = None
         self.cmap = None
-        self.robot_size = 10
         self.resolution = 0.05
+        self.robot_pixel_size = 6
+        self.robot_size = self.robot_pixel_size * self.resolution
 
         # Run Subscribe nodes
         rospy.init_node('map_listener')
@@ -28,6 +31,10 @@ class Map:
         self.robot_position_listener()
         print("Run cost map listner")
         self.costmap_listener()
+
+        # Wait
+        while self.get_cmap() is None or self.get_robot_position() is None:
+            time.sleep(1)
 
 
     """
@@ -56,19 +63,22 @@ class Map:
                 y: 0.0
                 z: 0.0
                 w: 1.0
-    data: [[]]
+    data: []
+
+    note: y then x
     """
     def cmap_callback(self, msg):
         cmap_data = np.array(msg.data)
         width_pixel = msg.info.width
         height_pixel = msg.info.height
         cmap_data = cmap_data.reshape((height_pixel, width_pixel))
-        self.cmap = cmap_data
+        self.cmap = ndimage.grey_dilation(cmap_data, size=(3,3))
 
         self.map_position = np.array([msg.info.origin.position.x, msg.info.origin.position.y])
-        width_meter = height_pixel * self.resolution
+        width_meter = width_pixel * self.resolution
         height_meter = height_pixel * self.resolution
         self.map_size = np.array((width_meter,height_meter))
+        self.map_pixel_size = np.array((width_pixel, height_pixel))
 
 
     """
@@ -94,12 +104,12 @@ class Map:
     def position_callback(self, msg):
         self.tick = (self.tick + 1) % 10
         if self.tick % 10 == 0:
-            # Position
+            # Positionpose
             x = msg.pose.position.x
             y = msg.pose.position.y
             self.robot_position = np.array((x, y))
 
-            # Orientation
+            # Orientatpose
             orientation_q = msg.pose.orientation
             orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
             (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
@@ -131,31 +141,66 @@ class Map:
         return self.map_size
 
 
+    def get_map_pixel_size(self):
+        return self.map_pixel_size
+
+
+    def get_cmap(self):
+        return self.cmap
+
+
     """
     pixel = meter/resolution
     """
     def position_2_map(self, pose):
-        pose = (pose - self.map_position) /self.resolution
+        pose[:2] = (pose[:2] - self.map_position) /self.resolution
         return tuple(pose)
 
     """
     meter = pixel * resolution
     """
     def map_2_position(self, pose):
-        pose = pose * self.resolution
-        pose += self.map_position
+        pose[:2] = pose[:2] * self.resolution
+        pose[:2] += self.map_position
         return tuple(pose)
 
 
-    def draw_cmap(self):
+    """
+    True = no collision
+    """
+    def collision_check(self, position):
+        if self.cmap is not None:
+            x = int(position[0])
+            y = int(position[1])
+            radius = int(self.robot_pixel_size/2)
+            positions = [(x, y), (x + radius, y), (x, y + radius), (x + radius, y + radius), (x - radius, y), (x, y - radius), (x - radius, y - radius), (x + radius, y - radius), (x - radius, y + radius)]
+            # positions = [(x, y)]
+
+            for pose in positions:
+                if self.cmap[pose[1],pose[0]] != 0:
+                    return False
+        else:
+            print("Cmap not ready")
+            return False
+
+        return True
+
+
+    def draw_cmap(self, rnd_node=None, node_list=None, goal=None, show=True):
         if self.cmap is not None:
             # Clear
             plt.clf()
+            # for stopping simulation with the esc key.
+            plt.gcf().canvas.mpl_connect('key_release_event',
+                                     lambda event: [exit(0) if event.key == 'escape' else None])
 
             # Draw
             print("Draw map")
+            # ax = self.ax
+            # fig = self.fig
+            # self.im.set_data(self.cmap)
             fig, ax = plt.subplots()
-            ax.imshow(self.cmap, cmap='gray_r')
+            im = ax.imshow(self.cmap, cmap='gray_r')
             
             # Draw Robot
             if self.robot_position is not None:
@@ -165,35 +210,62 @@ class Map:
                 # Draw robot size
                 deg = list(range(0, 360, 5))
                 deg.append(0)
-                xl = [x + self.robot_size * math.cos(np.deg2rad(d)) for d in deg]
-                yl = [y + self.robot_size * math.sin(np.deg2rad(d)) for d in deg]
-                ax.plot(xl, yl, "-b")
+                xl = [x + self.robot_pixel_size * math.cos(np.deg2rad(d)) for d in deg]
+                yl = [y + self.robot_pixel_size * math.sin(np.deg2rad(d)) for d in deg]
+                ax.plot(xl, yl, "-r")
 
-                # Draw Arrow head
-                dx = math.cos(self.robot_orientation)
-                dy = math.sin(self.robot_orientation)
-                x -= dx * self.robot_size/2
-                y -= dy * self.robot_size/2
-                ax.arrow(x, y, dx, dy, color='b', head_width=self.robot_size, head_length=self.robot_size, overhang=0.4)
+                # Draw robot pose
+                self.draw_node(ax, x, y, self.robot_orientation, self.robot_pixel_size, color='r')
+
+            # Draw goal
+            if goal is not None:
+                self.draw_node(ax, goal.x, goal.y, goal.theta, self.robot_pixel_size, color='r')
+
+            # Draw random new node
+            if rnd_node is not None:
+                self.draw_node(ax, rnd_node.x, rnd_node.y, rnd_node.theta, self.robot_pixel_size/2, color='b')
+
+
+            # Draw other nodes
+            if node_list is not None:
+                for node in node_list:
+                    # Node
+                    self.draw_node(ax, node.x, node.y, node.theta, self.robot_pixel_size/2, color='b')
+
+                    # Edge
+                    plt.plot(node.path_x, node.path_y, "-g")
+
 
             # Show
             ax.tick_params(axis='both', which='both', bottom=False,   
                             left=False, labelbottom=False, labelleft=False) 
-            fig.set_size_inches((8.5, 11), forward=False)
-            plt.show()
+            fig.set_size_inches((16, 20), forward=False)
+            plt.grid(True)
+            # plt.draw()
+            # plt.pause(0.01)
+
+            if show:
+                plt.show()
+            
             return True
         
         else:
             print("No Map")
             return False
+
+    def draw_node(self, ax, x, y, theta, size, color='r'):
+        # Draw Arrow head
+        dx = math.cos(theta)
+        dy = math.sin(theta)
+        x -= dx * size/2
+        y -= dy * size/2
+        ax.arrow(x, y, dx, dy, color=color, head_width=size, head_length=size, overhang=0.4)
     
 
 def main():
+    # Test
     map = Map()
-    time.sleep(1)
-    while not map.draw_cmap():
-        time.sleep(1)
-        pass
+    map.draw_cmap()
 
 
 if __name__ == "__main__":

@@ -9,9 +9,14 @@ edited: Alex Le
 
 import math
 import random
+import sys
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+import cmap
+import move
 
 show_animation = True
 
@@ -26,34 +31,32 @@ class RRT:
         RRT Node
         """
 
-        def __init__(self, x, y):
+        def __init__(self, x, y, theta):
             self.x = x
             self.y = y
+            self.theta = theta
             self.path_x = []
             self.path_y = []
             self.parent = None
 
-    def __init__(self, start, goal, obstacle_list, rand_area,
-                 expand_dis=3.0, path_resolution=0.5, goal_sample_rate=5, max_iter=500):
+    def __init__(self, start, goal, map,
+                 expand_dis=25.0, path_resolution=0.5, goal_sample_rate=1, max_iter=5000):
         """
         Setting Parameter
 
-        start:Start Position [x,y]
-        goal:Goal Position [x,y]
-        obstacleList:obstacle Positions [[x,y,size],...]
-        randArea:Random Sampling Area [min,max]
-
+        start:Start Position [x,y,theta]
+        goal:Goal Position [x,y,theta]
         """
-        self.start = self.Node(start[0], start[1])
-        self.end = self.Node(goal[0], goal[1])
-        self.min_rand = rand_area[0]
-        self.max_rand = rand_area[1]
+
+        self.map = map
+        self.start = self.Node(start[0], start[1], start[2])
+        self.end = self.Node(goal[0], goal[1], goal[2])
         self.expand_dis = expand_dis
         self.path_resolution = path_resolution
         self.goal_sample_rate = goal_sample_rate
         self.max_iter = max_iter
-        self.obstacle_list = obstacle_list
         self.node_list = []
+
 
     def planning(self, animation=True):
         """
@@ -70,25 +73,28 @@ class RRT:
 
             new_node = self.steer(nearest_node, rnd_node, self.expand_dis)
 
-            if self.check_collision(new_node, self.obstacle_list):
+            if self.collision_check(new_node):
                 self.node_list.append(new_node)
 
             if animation and i % 5 == 0:
-                self.draw_graph(rnd_node)
+                # self.draw_graph(rnd_node)
+                pass
 
             if self.calc_dist_to_goal(self.node_list[-1].x, self.node_list[-1].y) <= self.expand_dis:
                 final_node = self.steer(self.node_list[-1], self.end, self.expand_dis)
-                if self.check_collision(final_node, self.obstacle_list):
+                if self.collision_check(final_node):
                     return self.generate_final_course(len(self.node_list) - 1)
 
             if animation and i % 5:
-                self.draw_graph(rnd_node)
+                # self.draw_graph(rnd_node)
+                pass
 
         return None  # cannot find path
 
+
     def steer(self, from_node, to_node, extend_length=float("inf")):
 
-        new_node = self.Node(from_node.x, from_node.y)
+        new_node = self.Node(from_node.x, from_node.y, to_node.theta)
         d, theta = self.calc_distance_and_angle(new_node, to_node)
 
         new_node.path_x = [new_node.x]
@@ -114,57 +120,51 @@ class RRT:
 
         return new_node
 
+
+    def collision_check(self, node):
+        if node is None:
+            return False
+
+        # return self.map.collision_check((node.x, node.y))
+
+        for pose in list(zip(node.path_x, node.path_y))[::5]:
+            if not self.map.collision_check(pose):
+                return False
+
+        return True
+
+
     def generate_final_course(self, goal_ind):
-        path = [[self.end.x, self.end.y]]
+        path = [[self.end.x, self.end.y, self.end.theta]]
         node = self.node_list[goal_ind]
         while node.parent is not None:
-            path.append([node.x, node.y])
+            path.append([node.x, node.y, node.theta])
             node = node.parent
-        path.append([node.x, node.y])
+        path.append([node.x, node.y, node.theta])
 
         return path
+
 
     def calc_dist_to_goal(self, x, y):
         dx = x - self.end.x
         dy = y - self.end.y
         return math.hypot(dx, dy)
 
+
     def get_random_node(self):
+        size = self.map.get_map_pixel_size()
         if random.randint(0, 100) > self.goal_sample_rate:
-            rnd = self.Node(random.uniform(self.min_rand, self.max_rand),
-                            random.uniform(self.min_rand, self.max_rand))
+            rnd = self.Node(random.uniform(0, size[0] - 1),
+                            random.uniform(0, size[1] - 1),
+                            random.uniform(0, math.pi * 2))
         else:  # goal point sampling
-            rnd = self.Node(self.end.x, self.end.y)
+            rnd = self.Node(self.end.x, self.end.y, self.end.theta)
         return rnd
 
+
     def draw_graph(self, rnd=None):
-        plt.clf()
-        # for stopping simulation with the esc key.
-        plt.gcf().canvas.mpl_connect('key_release_event',
-                                     lambda event: [exit(0) if event.key == 'escape' else None])
-        if rnd is not None:
-            plt.plot(rnd.x, rnd.y, "^k")
-        for node in self.node_list:
-            if node.parent:
-                plt.plot(node.path_x, node.path_y, "-g")
+        self.map.draw_cmap(rnd, self.node_list, self.end, show=False)
 
-        for (ox, oy, size) in self.obstacle_list:
-            self.plot_circle(ox, oy, size)
-
-        plt.plot(self.start.x, self.start.y, "xr")
-        plt.plot(self.end.x, self.end.y, "xr")
-        plt.axis("equal")
-        plt.axis([-2, 15, -2, 15])
-        plt.grid(True)
-        plt.pause(0.01)
-
-    @staticmethod
-    def plot_circle(x, y, size, color="-b"):  # pragma: no cover
-        deg = list(range(0, 360, 5))
-        deg.append(0)
-        xl = [x + size * math.cos(np.deg2rad(d)) for d in deg]
-        yl = [y + size * math.sin(np.deg2rad(d)) for d in deg]
-        plt.plot(xl, yl, color)
 
     @staticmethod
     def get_nearest_node_index(node_list, rnd_node):
@@ -174,21 +174,6 @@ class RRT:
 
         return minind
 
-    @staticmethod
-    def check_collision(node, obstacleList):
-
-        if node is None:
-            return False
-
-        for (ox, oy, size) in obstacleList:
-            dx_list = [ox - x for x in node.path_x]
-            dy_list = [oy - y for y in node.path_y]
-            d_list = [dx * dx + dy * dy for (dx, dy) in zip(dx_list, dy_list)]
-
-            if min(d_list) <= size ** 2:
-                return False  # collision
-
-        return True  # safe
 
     @staticmethod
     def calc_distance_and_angle(from_node, to_node):
@@ -200,37 +185,37 @@ class RRT:
 
 
 def main(gx=6.0, gy=10.0):
-    print("start " + __file__)
+    # Test
 
-    # ====Search Path with RRT====
-    obstacleList = [
-        (5, 5, 1),
-        (3, 6, 2),
-        (3, 8, 2),
-        (3, 10, 2),
-        (7, 5, 2),
-        (9, 5, 2),
-        (8, 10, 1)
-    ]  # [x, y, radius]
+    # Map
+    map = cmap.Map()
+    while map.get_cmap() is None or map.get_robot_position() is None:
+        time.sleep(1)
+        pass
+  
     # Set Initial parameters
-    rrt = RRT(start=[0, 0],
-              goal=[gx, gy],
-              rand_area=[-2, 15],
-              obstacle_list=obstacleList)
+    start = map.position_2_map(np.hstack([map.get_robot_position(), map.get_robot_orientation()]))
+    goal = map.position_2_map(np.array([5.0, -7.0, 3.14/2]))
+    rrt = RRT(start, goal, map)
+
+    # Search Path with RRT
     path = rrt.planning(animation=show_animation)
 
     if path is None:
         print("Cannot find path")
+        rrt.draw_graph()
+        plt.show()
     else:
         print("found path!!")
 
         # Draw final path
         if show_animation:
             rrt.draw_graph()
-            plt.plot([x for (x, y) in path], [y for (x, y) in path], '-r')
-            plt.grid(True)
+            plt.plot([x for (x, y, theta) in path], [y for (x, y, theta) in path], '-r')
             plt.pause(0.01)  # Need for Mac
             plt.show()
+
+    # Move Robot
 
 
 if __name__ == '__main__':
