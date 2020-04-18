@@ -200,7 +200,7 @@ class Map:
             # fig = self.fig
             # self.im.set_data(self.cmap)
             fig, ax = plt.subplots()
-            im = ax.imshow(self.cmap, cmap='gray_r')
+            ax.imshow(self.cmap, cmap='gray_r')
             
             # Draw Robot
             if self.robot_position is not None:
