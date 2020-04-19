@@ -12,3 +12,4 @@ CS 8803 Mobile Manipulation
 - roslaunch RRT-Mobile-Manipulator demo2.launch
 
 ## RRT
+![Example](/images/rrt_example.png)
