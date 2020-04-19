@@ -166,6 +166,10 @@ class RRT:
         self.map.draw_cmap(rnd, self.node_list, self.end, show=False)
 
 
+    def draw_path(self, path):
+        plt.plot([x for (x, y, theta) in path], [y for (x, y, theta) in path], '-r')
+
+
     @staticmethod
     def get_nearest_node_index(node_list, rnd_node):
         dlist = [(node.x - rnd_node.x) ** 2 + (node.y - rnd_node.y)
@@ -184,14 +188,18 @@ class RRT:
         return d, theta
 
 
-def main(gx=6.0, gy=10.0):
+def move_robot(path, map):
+    for ii in range(len(path)):
+        path[ii] = move.node_2_goal(path[ii][0:2], path[ii][2], cmap=map)
+        path = path[::-1]
+        move.move_along_path(path)
+
+
+def main():
     # Test
 
     # Map
     map = cmap.Map()
-    while map.get_cmap() is None or map.get_robot_position() is None:
-        time.sleep(1)
-        pass
   
     # Set Initial parameters
     start = map.position_2_map(np.hstack([map.get_robot_position(), map.get_robot_orientation()]))
@@ -208,18 +216,13 @@ def main(gx=6.0, gy=10.0):
     else:
         print("found path!!")
 
-        # Draw final path
-        if show_animation:
-            rrt.draw_graph()
-            plt.plot([x for (x, y, theta) in path], [y for (x, y, theta) in path], '-r')
-            plt.pause(0.01)  # Need for Mac
-            plt.show()
+        rrt.draw_graph()
+        rrt.draw_path(path)
+        plt.pause(0.01)  # Need for Mac
+        plt.show()
 
     # Move Robot
-    for ii in range(len(path)):
-        path[ii] = move.node_2_goal(path[ii][0:2], path[ii][2], cmap=map)
-    path = path[::-1]
-    move.move_along_path(path)
+    move_robot(path, map)
 
 
 if __name__ == '__main__':

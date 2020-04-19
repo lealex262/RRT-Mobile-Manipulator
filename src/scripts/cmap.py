@@ -5,7 +5,6 @@ from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion
 
 import numpy as np
-from scipy import ndimage
 import matplotlib.pyplot as plt
 import time
 import math
@@ -72,7 +71,7 @@ class Map:
         width_pixel = msg.info.width
         height_pixel = msg.info.height
         cmap_data = cmap_data.reshape((height_pixel, width_pixel))
-        self.cmap = ndimage.grey_dilation(cmap_data, size=(3,3))
+        self.cmap = cmap_data
 
         self.map_position = np.array([msg.info.origin.position.x, msg.info.origin.position.y])
         width_meter = width_pixel * self.resolution
