@@ -173,7 +173,6 @@ class Map:
             y = int(position[1])
             radius = int(self.robot_pixel_size/2)
             positions = [(x, y), (x + radius, y), (x, y + radius), (x + radius, y + radius), (x - radius, y), (x, y - radius), (x - radius, y - radius), (x + radius, y - radius), (x - radius, y + radius)]
-            # positions = [(x, y)]
 
             for pose in positions:
                 if self.cmap[pose[1],pose[0]] != 0:
@@ -240,8 +239,6 @@ class Map:
                             left=False, labelbottom=False, labelleft=False) 
             fig.set_size_inches((16, 20), forward=False)
             plt.grid(True)
-            # plt.draw()
-            # plt.pause(0.01)
 
             if show:
                 plt.show()
