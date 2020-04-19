@@ -1,23 +1,33 @@
 <launch>
 
-  <env name="GAZEBO_MODEL_PATH" value="$(find fetch_gazebo)/models:$(optenv GAZEBO_MODEL_PATH)" />
+    <env name="GAZEBO_MODEL_PATH" value="$(find fetch_gazebo)/models:$(optenv GAZEBO_MODEL_PATH)" />
 
-  <arg name="robot" default="fetch"/>
-  <arg name="debug" default="false"/>
-  <arg name="gui" default="true"/>
-  <arg name="headless" default="false"/>
+    <arg name="robot" default="fetch"/>
+    <arg name="debug" default="false"/>
+    <arg name="gui" default="true"/>
+    <arg name="headless" default="false"/>
 
-  <!-- Start Gazebo with a blank world -->
-  <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="debug" value="$(arg debug)" />
-    <arg name="gui" value="$(arg gui)" />
-    <arg name="paused" value="false"/>
-    <arg name="use_sim_time" value="true"/>
-    <arg name="headless" value="$(arg headless)"/>
-    <arg name="world_name" value="$(find RRT-Mobile-Manipulator)/src/maps/walls/model.sdf"/>
-  </include>
+    <!-- Start Gazebo with a blank world -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="debug" value="$(arg debug)" />
+        <arg name="gui" value="$(arg gui)" />
+        <arg name="paused" value="false"/>
+        <arg name="use_sim_time" value="true"/>
+        <arg name="headless" value="$(arg headless)"/>
+        <arg name="world_name" value="$(find RRT-Mobile-Manipulator)/src/maps/open_world.sdf"/>
+    </include>
 
-  <!-- Oh, you wanted a robot? -->
-  <include file="$(find fetch_gazebo)/launch/include/$(arg robot).launch.xml" />
+    <!-- Oh, you wanted a robot? -->
+    <include file="$(find fetch_gazebo)/launch/include/$(arg robot).launch.xml" />
+
+    <!-- Run Navigation-->
+    <!-- <include file="$(find fetch_navigation)/launch/fetch_nav.launch">
+        <arg name="map_file" default="$(find RRT-Mobile-Manipulator)/src/maps/open_world.yaml"/>
+    </include>
+    <node pkg="pose_publisher" type="pose_publisher" name="pose_publisher"> 
+    </node>
+    <node pkg="rviz" type="rviz" name="$(anon rviz)"
+        args="-d $(find RRT-Mobile-Manipulator)/src/config/navigation.rviz">
+    </node> -->
 
 </launch>
