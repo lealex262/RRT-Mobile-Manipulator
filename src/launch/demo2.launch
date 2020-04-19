@@ -14,7 +14,7 @@
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
     <arg name="headless" value="$(arg headless)"/>
-    <arg name="world_name" value="$(find RRT-Mobile-Manipulator)/src/maps/walls_w_obstacles/model.sdf"/>
+    <arg name="world_name" value="$(find RRT-Mobile-Manipulator)/src/maps/simple_world.sdf"/>
   </include>
 
   <!-- Oh, you wanted a robot? -->
