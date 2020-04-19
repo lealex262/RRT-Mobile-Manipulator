@@ -191,8 +191,8 @@ class RRT:
 def move_robot(path, map):
     for ii in range(len(path)):
         path[ii] = move.node_2_goal(path[ii][0:2], path[ii][2], cmap=map)
-        path = path[::-1]
-        move.move_along_path(path)
+    path = path[::-1]    
+    move.move_along_path(path)
 
 
 def main():
